@@ -1,7 +1,7 @@
-library(shiny)
+require(shiny)
+library(splitstackshape)
 library(pROC)
 library(nnet)
-library(splitstackshape)
 
 setup <- function() {
   sleepData <<- read.csv("sleepData.csv")
@@ -70,10 +70,11 @@ model_predict <- function(model, data, column) {
 }
 
 make_model <- function(features) {
+  # require that at least 1 feature is selected
   req(length(features) > 0)
-  modelFormula <<- "Sleep.Disorder ~"
-  
+
   # create formula with selected features
+  modelFormula <<- "Sleep.Disorder ~"
   for (i in 1:length(features)) {
     modelFormula <<- paste(modelFormula, features[i])
     if (i != length(features)) modelFormula <<- paste(modelFormula, "+")
@@ -87,17 +88,31 @@ make_model <- function(features) {
 }
 
 model_accuracy <- function(features, data, column, type) {
+  # require that at least 1 feature is selected
   req(length(features) > 0)
-  # create confusion matrix
-  table <- table(data$Sleep.Disorder, data[[column]])
+  
   # calculate accuracy of the model
+  table <- table(data$Sleep.Disorder, data[[column]])
   return (toString(paste(type, "Accuracy:", round((sum(diag(table))/sum(table))*100, 2))))
 }
 
-plot_roc <- function(features) {
+make_roc <- function(features) {
+  # require that at least 1 feature is selected
   req(length(features) > 0)
-  # create roc curve for current model
-  return (roc(testDataNum$Sleep.Disorder, testDataNum$Predicted))
+  
+  # calculate roc curve for current model
+  return (suppressMessages(multiclass.roc(testDataNum$Sleep.Disorder, testDataNum$Predicted, AUC=TRUE)))
+}
+
+plot_roc <- function(features, roc) {
+  # require that at least 1 feature is selected
+  req(length(features) > 0)
+  
+  # create plot for roc curve
+  plot <- plot.roc(roc[['rocs']][[1]], main="ROC Curve for Current Model")
+  sapply(2:length(roc[['rocs']]), function(i) lines.roc(roc[['rocs']][[i]], col=i))
+  legend("bottomright", c("None", "Insomnia", "Sleep Apnea"), fill=c("black", "red", "green"))
+  return (plot)
 }
 
 setup()
@@ -110,53 +125,63 @@ ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
       checkboxGroupInput(inputId = "features", label = "Features to Use in Model:",
-                         c("Gender", "Age", "Occupation", "Sleep.Duration",
-                           "Quality.of.Sleep", "Physical.Activity.Level",
-                           "Stress.Level", "BMI.Category", "Heart.Rate",
-                           "Daily.Steps", "BP.Systolic", "BP.Diastolic")),
-      actionButton("splitData", "Re-Split Data Set"),
-      uiOutput("lineBreak"),
-      textOutput("trainingAccuracy"),
-      textOutput("testingAccuracy")
+                         c("Gender", "Age", "Occupation", "Sleep Duration" = "Sleep.Duration", "Sleep Quality" = "Quality.of.Sleep", 
+                           "Physical Activity Level" = "Physical.Activity.Level", "Stress Level" = "Stress.Level", 
+                           "BMI Category" = "BMI.Category", "Heart Rate" = "Heart.Rate", "Daily Steps" = "Daily.Steps", 
+                           "Systolic Blood Pressure" = "BP.Systolic", "Diastolic Blood Pressure" = "BP.Diastolic")),
+      actionButton("splitData", "Re-Split Data Set"), uiOutput("lineBreak1"), 
+      textOutput("auc0"), textOutput("auc1"), textOutput("auc2"), htmlOutput("auc3")
     ),
   
     mainPanel(
-      uiOutput("test"),
-      plotOutput("rocPlot")
+      tabsetPanel(type = "tabs",
+                  tabPanel("Description", uiOutput("description")),
+                  tabPanel("ROC Plot", plotOutput("rocPlot")),
+                  tabPanel("Analysis", uiOutput("analysis"))
+      )
     )
   )
 )
 
 server <- function(input, output, session) {
-  # randomize data split
-  observeEvent(input$splitData, {
-    split_data()
+  display_data <- function() {
     make_model(input$features)
-    output$rocPlot <- renderPlot ({ plot(plot_roc(input$features), main="ROC Curve for Model") })
-    output$trainingAccuracy <- renderText({ model_accuracy(input$features, trainDataNum, "Predicted", "Training") })
-    output$testingAccuracy <- renderText({ model_accuracy(input$features, testDataNum, "Predicted", "Testing ") })
-  })
+    output$rocPlot <- renderPlot ({ plot_roc(input$features, make_roc(input$features)) })
+    output$auc0 <- renderText({ toString(paste("AUC for None:", round(auc(make_roc(input$features)[['rocs']][[1]]), 2))) })
+    output$auc1 <- renderText({ toString(paste("AUC for Insomnia:", round(auc(make_roc(input$features)[['rocs']][[2]]), 2))) })
+    output$auc2 <- renderText({ toString(paste("AUC for Sleep Apnea:", round(auc(make_roc(input$features)[['rocs']][[3]]), 2))) })
+    output$auc3 <- renderText({ toString(paste("<b>Overall AUC:", round(auc(make_roc(input$features)), 2), "</b>")) })
+  }
   
   # create plot with selected features
-  observeEvent(input$features, {
-    make_model(input$features)
-    output$rocPlot <- renderPlot ({ plot(plot_roc(input$features), main="ROC Curve for Model") })
-    output$trainingAccuracy <- renderText({ model_accuracy(input$features, trainDataNum, "Predicted", "Training") })
-    output$testingAccuracy <- renderText({ model_accuracy(input$features, testDataNum, "Predicted", "Testing ") })
+  observeEvent(input$features, { display_data() })
+  
+  # randomize data split and create plot
+  observeEvent(input$splitData, {
+    split_data()
+    display_data()
   })
   
-  output$lineBreak <- renderUI({ HTML("<br>") })
-  
-  output$test <- renderUI({
+  output$lineBreak1 <- renderUI({ HTML("<br>") })
+
+  output$description <- renderUI({
     HTML("<br> In this case study, we will look at a data set about sleep health and lifestyle for 374 participants.
     The data set includes features such as gender, age, occupation, sleep duration, quality of sleep, physical activity level,
     stress level, BMI category, blood pressure, heart rate, daily steps, and what sleep disorder they have (if applicable).
     The purpose of this case study is to find what features are useful in predicting if a patient has a sleeping disorder and
-    creating a classification algorithm to accomplish this with a testing data set. <br><br> In this application, a multinomial 
-    classification model was developed to predict whether a participant has a sleeping disorder. The plot below is the ROC curve, 
-    which shows the overall performance of the classification model. The check boxes in the side panel allows for selecting desired 
-    features to use for the model. To develop a classification model, the data set must be split into a training set and testing 
-    set. The button in the side panel will randomly split the original data set in half to create these two data sets.<br><br>")
+    creating a classification algorithm to accomplish this with a testing data set. <br><br>
+    
+    In this application, a multinomial classification model was developed to predict whether a participant has a sleeping disorder.
+    The plot are the ROC curves, which shows the overall performance of the classification model for each class (none, insomnia, and 
+    sleep apnea). The check boxes in the side panel allows for selecting desired features to use for the model. To develop a 
+    classification model, the data set must be split into a training set and testing set. The button in the side panel will randomly 
+    split the original data set in half to create these two data sets. <br><br>")
+  })
+  
+  output$analysis <- renderUI({
+    HTML("<br> select an algorithm suitable for the data set (classification/regression/clustering/other) <br><br>
+         explain the mathematical/statistical details of the algorithm <br><br>
+         see how changing parameters effects the results. explain the data set and machine learning modeling methodology <br><br>")
   })
 }
 
