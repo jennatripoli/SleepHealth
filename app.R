@@ -2,6 +2,7 @@ require(shiny)
 library(splitstackshape)
 library(pROC)
 library(nnet)
+library(ggplot2)
 library(ggeffects)
 library(corrplot)
 
@@ -173,7 +174,7 @@ server <- function(input, output, session) {
     
     model <- make_model(input$features)
     roc <- make_roc(input$features)
-    output$regressionPlot <- renderPlot ({ suppressMessages(plot_regression(input$features, model)) })
+    output$regressionPlot <- renderPlot ({ plot_regression(input$features, model) })
     output$rocPlot <- renderPlot ({ plot_roc(input$features, roc) })
   }
   
@@ -192,56 +193,49 @@ server <- function(input, output, session) {
   output$lineBreak3 <- renderUI({ HTML("<br>") })
 
   output$description <- renderUI({
-    HTML("<br> In this case study, we will look at a data set about sleep health and lifestyle for 374 participants.
-    The data set includes features such as gender, age, occupation, sleep duration, quality of sleep, physical activity level,
-    stress level, BMI category, blood pressure, heart rate, daily steps, and what sleep disorder they have (if applicable). The 
-    original data set can be found on Kaggle <a href='https://www.kaggle.com/datasets/uom190346a/sleep-health-and-lifestyle-dataset'>here</a>.
-    The purpose of this case study is to find what features are useful in predicting if a patient has a sleeping disorder and
-    creating a classification algorithm to accomplish this with a testing data set. The motivation for researching this topic is that 
-    it is about a very relevant subject, since many people suffer from sleep issues. When looking for a data set, it was important to 
-    me to find one that was about a topic that I find personal interest in and had a variety of different features to look at. <br><br>
+    HTML("<br> In this case study, we will look at a data set about sleep health and lifestyle for 374 participants. 
+    The data set includes features such as gender, age, occupation, sleep duration, quality of sleep, physical activity level, 
+    stress level, BMI category, blood pressure, heart rate, daily steps, and what sleep disorder they have (if applicable). 
+    The original data set can be found on Kaggle <a href='https://www.kaggle.com/datasets/uom190346a/sleep-health-and-lifestyle-dataset'>here</a>. 
+    The purpose of this case study is to find what features are useful in predicting if a patient has a sleeping disorder and create a 
+    classification algorithm to accomplish this with a testing data set. The motivation for researching this topic is that it is a very 
+    relevant subject since many people suffer from sleep issues. When looking for a data set, it was important to me to find one that was about 
+    a topic that I find personal interest in and had a variety of different features to look at. <br><br>
     
-    In this application, a multinomial classification model was developed to predict whether a participant has a sleeping disorder. The
-    regresssion plot displays the distribution of (p) and (1-p) for each class (none, insomnia, and sleep apnea).The ROC plot shows the 
-    overall performance of the classification model for each class. The check boxes in the side panel allows for selecting desired features 
-    to use for the model. To develop a classification model, the data set must be split into a training set and testing set. The button in 
-    the side panel will randomly split the original data set in half to create these two data sets. <br><br>") })
+    In this application, a multinomial classification model was developed to predict whether a participant has a sleeping disorder. The regression 
+    plot displays the distribution of (p) and (1-p) for each class (none, insomnia, and sleep apnea). The ROC plot shows the overall performance of 
+    the classification model for each class. The checkboxes in the side panel allow for selecting desired features to use for the model. To develop 
+    a classification model, the data set must be split into a training set and a testing set. The button in the side panel will randomly split the 
+    original data set in half to create these two data sets. <br><br>
+    
+    Sleep disorder is a categorical variable since there are three discrete values it can have -- 'None', 'Insomnia', and 'Sleep Apnea'. The algorithm 
+    we want to use should be for supervised learning because we are making a predictive model. Knowing that we are predicting a categorical variable 
+    with supervised learning, there are a variety of options for algorithms to use. I selected logistic regression because it represents the relationship 
+    between a single dependent discrete variable (response) and one or more independent variables (predictors). Additionally, logistic regression is 
+    especially useful in this case because there are multiple classes to predict. The features being input were both numerical and categorical, and 
+    logistic regression can handle this well with classification. <br><br>") })
   
   output$mathematics1 <- renderUI({ 
-    HTML("<br>Visualizing a logistic regression model involves plotting the overall fraction of the response variable, with probability 
-         on the y-axis. The model returns a score that estimates the probability for each of the three classes for sleep disorder.
-         There is one plot for each discrete option for the value of sleep disorder since this is a multinomial model. Each graph 
-         compares the distribution of participants with that specific value for sleep disorder and those who do not as a function of 
-         the model's predicted probability.
-         
-         We can use an ROC curve as a visual diagnostic tool for the logistic regression model. The area under the curve represents how
-         well the model is able to predict, with the ideal value being AUC = 1. On an ROC curve, the x-axis is the False Positive Rate
-         and the y-axis is the True Positive Rate. When AUC = 1, the curve of the graph is to the upper left corner, where sensitivity = 1 
-         and specificity = 0. This means that the closer the ROC curve is to the upper left corner, the higher the accuracy of the model is.
-         
-         Below is the formula for logistic regression:") })
+    HTML("<br>Visualizing a logistic regression model involves plotting the overall fraction of the response variable, with probability on the y-axis. 
+    The model returns a score that estimates the probability for each of the three classes of sleep disorder. There is one plot for each discrete option 
+    for the value of sleep disorder since this is a multinomial model. Each graph compares the distribution of participants with that specific value for 
+    sleep disorder and those who do not as a function of the model's predicted probability. We can use a ROC curve as a visual diagnostic tool for the 
+    logistic regression model. The area under the curve represents how well the model can predict, with the ideal value being AUC = 1. On an ROC curve, 
+    the x-axis is the False Positive Rate and the y-axis is the True Positive Rate. When AUC = 1, the curve of the graph is to the upper left corner. 
+    This means that the closer the ROC curve is to the upper left corner, the higher the accuracy of the model is. Below is the formula for logistic regression:") })
   
   output$formula1 <- renderUI({ withMathJax(helpText("$$ln(\\frac{p}{1-p})=b_{0}+b_{1}x$$")) })
-  output$mathematics2 <- renderUI({ HTML("For modeling purposes, this formula is rearranged to become the following formula: <br><br>") })
+  output$mathematics2 <- renderUI({ HTML("For modeling purposes, this formula is rearranged to become the following formula:") })
   output$formula2 <- renderUI({ withMathJax(helpText("$$p=\\frac{1}{1+e^{-(b_{0}+b_{1}x)}}$$")) })
   
   output$mathematics3 <- renderUI({ 
-    HTML("Plotting logistic regression has an S-curve, with the predicted y-values lying within the range of 0 to 1. The case of 
-         interest is y = 1 because this indicates 'true'. Logit(P(y = 1)) is inverted by the sigmoid function to compute label
-         probabililities. Categorical variables are expanded with one-hot encoding. Logistic regression is an iterative solution,
-         since the least squares are re-weighted over and over until the optimized model is found.") })
+    HTML("Plotting logistic regression has an S-curve, with the predicted y-values lying within the range of 0 to 1. The case of interest is y = 1 because 
+         this indicates 'true'. Logit(P(y = 1)) is inverted by the sigmoid function to compute label probabilities. Categorical variables are expanded with 
+         one-hot encoding. Logistic regression is an iterative solution since the least squares are re-weighted over and over until the optimized model is found.") })
 
   output$analysis1 <- renderUI({
-    HTML("<br> Sleep disorder is a categorical variable since there are three discrete values it can have -- 'None', 'Insomnia', and
-         'Sleep Apnea'. The algorithm we want to use should be for supervised learning because we are making a predictive model.
-         Knowing that we are predicting a categorical variable with supervised learning, there are a variety of options for algorithms
-         to use. I selected logistic regression because it represents the relationship between a single dependent discrete variable 
-         (response) and one or more independent variables (predictors). Additionally, logistic regression is especially useful in
-         this case because of there being multiple classes to predict. The features being input were both numerical and categorical,
-         and logistic regression can handle this well with classification.
-         
-         Through testing out different combinations of features, we can find a good group of predictors to use for the model. To have 
-         some guidance of what features to look at, I created a correlation matrix for all available features in the training data. <br><br>") })
+    HTML("<br> Through testing out different combinations of features, we can find a good group of predictors to use for the model. To have some guidance on what 
+         features to look at, I created a correlation matrix for all available features in the training data. <br><br>") })
   
   output$corrPlot <- renderPlot({ corrplot(cor(trainDataNum2[, -1]), tl.col="black", tl.cex=1) })
   
