@@ -149,10 +149,11 @@ ui <- fluidPage(
     mainPanel(
       tabsetPanel(type = "tabs",
                   tabPanel("Description", uiOutput("description")),
-                  tabPanel("Regression Plot", uiOutput("lineBreak2"), plotOutput("regressionPlot")),
-                  tabPanel("ROC Plot", uiOutput("lineBreak3"), plotOutput("rocPlot")),
-                  tabPanel("Mathematics", uiOutput("mathematics1"), uiOutput("formula1"), uiOutput("mathematics2"), uiOutput("formula2"), uiOutput("mathematics3")),
-                  tabPanel("Analysis", uiOutput("analysis1"), plotOutput("corrPlot"), uiOutput("analysis2"))
+                  tabPanel("Regression", uiOutput("lineBreak2"), plotOutput("regressionPlot")),
+                  tabPanel("ROC Curve", uiOutput("lineBreak3"), plotOutput("rocPlot")),
+                  tabPanel("Math", uiOutput("math1"), uiOutput("formula1"), uiOutput("math2"), uiOutput("formula2"), uiOutput("math3")),
+                  tabPanel("Features", uiOutput("analysis1"), plotOutput("corrPlot")),
+                  tabPanel("Analysis", uiOutput("analysis2"))
       )
     )
   )
@@ -215,8 +216,8 @@ server <- function(input, output, session) {
         especially useful in this case because there are multiple classes to predict. The input features were both numerical and categorical, and logistic 
         regression can handle this well with classification. <br><br>") })
   
-  output$mathematics1 <- renderUI({ 
-    HTML("<br>Visualizing a logistic regression model involves plotting the overall fraction of the response variable, with probability on the y-axis. 
+  output$math1 <- renderUI({ 
+    HTML("<br> Visualizing a logistic regression model involves plotting the overall fraction of the response variable, with probability on the y-axis. 
         The model returns a score that estimates the probability for each of the three classes of sleep disorder. There is one plot for each discrete option 
         for the value of sleep disorder since this is a multinomial model. Each graph compares the distribution of participants with that specific value for 
         sleep disorder and those who do not as a function of the model's predicted probability. We can use a ROC curve as a visual diagnostic tool for the 
@@ -225,10 +226,10 @@ server <- function(input, output, session) {
         This means that the closer the ROC curve is to the upper left corner, the higher the accuracy of the model is. Below is the formula for logistic regression:") })
   
   output$formula1 <- renderUI({ withMathJax(helpText("$$ln(\\frac{p}{1-p})=b_{0}+b_{1}x$$")) })
-  output$mathematics2 <- renderUI({ HTML("For modeling purposes, this formula is rearranged to become the following formula:") })
+  output$math2 <- renderUI({ HTML("For modeling purposes, this formula is rearranged to become the following formula:") })
   output$formula2 <- renderUI({ withMathJax(helpText("$$p=\\frac{1}{1+e^{-(b_{0}+b_{1}x)}}$$")) })
   
-  output$mathematics3 <- renderUI({ 
+  output$math3 <- renderUI({ 
     HTML("Plotting logistic regression has an S-curve, with the predicted y-values lying within the range of 0 to 1. The case of interest is y = 1 because 
          this indicates 'true'. Logit(P(y = 1)) is inverted by the sigmoid function to compute label probabilities. Categorical variables are expanded with 
          one-hot encoding. Logistic regression is an iterative solution since the least squares are re-weighted over and over until the optimized model is found.") })
@@ -236,21 +237,25 @@ server <- function(input, output, session) {
   output$analysis1 <- renderUI({
     HTML("<br> Through testing out different combinations of features, we can find a good group of predictors to use for the model. To have some guidance on what 
          features to look at, I created a correlation matrix for all available features in the training data. From the correlation matrix below, we can see that 
-         BMI category, systolic blood pressure, and diastolic blood pressure all have strong positive correlations with sleep disorder. Age and occupation also 
-         have moderate positive correlations with sleep disorder. Therefore, these are the variables that we will test out first with our model. The variables 
-         sleep duration, quality of sleep, stress level, and daily steps all have very weak correlations with sleep disorder, so they will likely not be considered 
-         for our optimal model due to being considered noisy data. <br><br>") })
+         BMI category, systolic blood pressure, and diastolic blood pressure all have strong positive correlations with sleep disorder. Age, occupation, gender, and 
+         heart rate also have moderate positive correlations with sleep disorder. Therefore, these are the variables that we will test out first with our model. The 
+         variables sleep duration, quality of sleep, stress level, and daily steps all have very weak correlations with sleep disorder, so they will likely not be 
+         considered for our optimal model due to being considered noisy data. <br><br>") })
   
-  output$corrPlot <- renderPlot({ corrplot(cor(trainDataNum2[, -1]), tl.col="black", tl.cex=1) })
+  output$corrPlot <- renderPlot({ corrplot(cor(trainDataNum2[, -1]), tl.col="black") })
   
   output$analysis2 <- renderUI({
-    HTML("<br> When looking at the ROC curve for a model with predictors of the three features with strong positive correlations, we can observe 
-         that the overall AUC is usually above 0.8, which is a good sign. However, we can see some decent variability in the overall AUC 
-         when re-splitting the data to change the training set. This is an indication to add additional features to the model, so I decided 
-         to include age and occupation as well. This reduced the variability in the overall AUC and made it consistently above 0.82, making 
-         this model the optimal choice. To prove the point about the other available features being noisy data, we can also a model with all 
-         12 features selected as predictors. In doing this, we can see that the overall AUC has very similar behavior to the previous model 
-         with 5 features, showing that the other 7 variables are not necessary when predicting sleep disorder. <br><br>") })
+    HTML("<br> When looking at the ROC curve for a model with predictors of the three features with strong positive correlations, we can observe that the overall AUC 
+         is usually above 0.8, which is a good sign. However, we can see some decent variability in the overall AUC when re-splitting the data to change the training 
+         set. This is an indication to add additional features to the model, so I decided to include age and occupation as well. This reduced the variability in the 
+         overall AUC and made it consistently above 0.82, making this model a better choice. Adding in gender and heart rate moves the overall AUC to be consistently 
+         above 0.85. Therefore, I chose the optimal model to use BMI category, systolic blood pressure, diastolic blood pressure, age, occupation, gender, and heart 
+         rate as predictors. <br><br>
+         
+         To prove the point about the other available features being noisy data, we can also create a model with all 12 features selected as predictors. In doing this, 
+         we can see that the overall AUC has very similar behavior to the previous model with 7 features, showing that the other 5 variables are not necessary for the 
+         model when predicting sleep disorder. <br><br>")
+  })
 }
 
 shinyApp(ui=ui, server=server)
