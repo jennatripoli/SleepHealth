@@ -205,7 +205,7 @@ server <- function(input, output, session) {
     regresssion plot displays the distribution of (p) and (1-p) for each class (none, insomnia, and sleep apnea).The ROC plot shows the 
     overall performance of the classification model for each class. The check boxes in the side panel allows for selecting desired features 
     to use for the model. To develop a classification model, the data set must be split into a training set and testing set. The button in 
-    the side panel will randomly split the original data set in half to create these two data sets.") })
+    the side panel will randomly split the original data set in half to create these two data sets. <br><br>") })
   
   output$mathematics1 <- renderUI({ 
     HTML("<br>Visualizing a logistic regression model involves plotting the overall fraction of the response variable, with probability 
@@ -256,9 +256,9 @@ server <- function(input, output, session) {
          that the overall AUC is usually above 0.8, which is a good sign. However, we can see some decent variability in the overall AUC 
          when re-splitting the data to change the training set. This is an indication to add additional features to the model, so I decided 
          to include age and occupation as well. This reduced the variability in the overall AUC and made it consistently above 0.82, making 
-         this model the optimal choice. To prove the point about the other available features being noisy data, we can also test out a model 
-         with all 12 features selected as predictors. In doing this, we can see that the overall AUC has very similar behavior to that of the 
-         previous model with 5 features, showing that the other 7 variables are not necessary when predicting sleep disorder.") })
+         this model the optimal choice. To prove the point about the other available features being noisy data, we can also a model with all 
+         12 features selected as predictors. In doing this, we can see that the overall AUC has very similar behavior to the previous model 
+         with 5 features, showing that the other 7 variables are not necessary when predicting sleep disorder. <br><br>") })
 }
 
 shinyApp(ui=ui, server=server)
